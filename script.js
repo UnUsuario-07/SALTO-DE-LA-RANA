@@ -153,12 +153,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Verificar victoria
-    function checkWin(// Dentro de checkWin(), después de verificar la victoria:
-database.ref('partidas/' + Date.now()).set({
-  level: currentLevel,
-  moves: moves,
-  fecha: new Date().toLocaleString()
-});) {
+    function checkWin() {
+  if (/* condición de victoria */) {
+    const gameData = {
+      level: currentLevel,
+      moves: moves,
+      timestamp: new Date().toISOString()
+    };
+
+    // Guarda en la ruta 'partidas' con un ID único
+    database.ref('partidas/' + Date.now()).set(gameData)
+      .then(() => console.log("Datos guardados en Firebase!"))
+      .catch((error) => console.error("Error:", error));
+  }
+    } {
         const winState = [
             ...Array(currentLevel).fill('red'),
             'empty',
