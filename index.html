@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salto de la Rana</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🐸 ¡Salto de la Rana! 🐸</h1>
+        <div class="controls">
+            <div class="control-group">
+                <label for="level">Nivel:</label>
+                <select id="level">
+                    <option value="1">1 rana</option>
+                    <option value="2">2 ranas</option>
+                    <option value="3" selected>3 ranas</option>
+                    <option value="4">4 ranas</option>
+                    <option value="5">5 ranas</option>
+                </select>
+            </div>
+            <button id="reset">Reiniciar</button>
+            <span id="moves">Movimientos: 0</span>
+        </div>
+        <div class="game-board" id="board"></div>
+        
+        <!-- Panel oculto para el grafo de solución -->
+        <div id="dev-panel" class="hidden">
+            <h3>🔧 Modo Desarrollo</h3>
+            <p><small>Presiona Ctrl+Shift+D para ocultar</small></p>
+            <div id="graph-container"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
