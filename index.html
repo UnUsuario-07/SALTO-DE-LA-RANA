@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Salto de la Rana</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .hidden { display: none; }
+        .frog { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; font-size: 20px; transition: transform 0.2s; }
+        .frog.green { background-color: #4CAF50; color: white; }
+        .frog.red { background-color: #F44336; color: white; }
+        .empty { width: 60px; height: 60px; background-color: #f5f5f5; border: 2px dashed #ccc; border-radius: 50%; }
+        .game-board { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 25px auto; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -25,7 +33,6 @@
         </div>
         <div class="game-board" id="board"></div>
         
-        <!-- Panel oculto para el grafo de solución -->
         <div id="dev-panel" class="hidden">
             <h3>🔧 Modo Desarrollo</h3>
             <p><small>Presiona Ctrl+Shift+D para ocultar</small></p>
@@ -33,14 +40,13 @@
         </div>
     </div>
 
-    <!-- Firebase SDK (versión modular) -->
+    <!-- Firebase SDK -->
     <script type="module">
-        // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
+        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
 
-        // Your web app's Firebase configuration
+        // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyB3wLx5mtJLjODg6qNrWl76v2nka_Bhvq8",
             authDomain: "salto-de-la-rana-ab7f9.firebaseapp.com",
@@ -52,117 +58,64 @@
             measurementId: "G-Z56995RQ2J"
         };
 
-        // Initialize Firebase
+        // Inicializa Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const analytics = getAnalytics(app);
-        
-        console.log("Firebase inicializado correctamente");
 
-        // Función para guardar datos en Firebase
-        async function saveGameData(level, moves) {
+        // Función para registrar errores
+        async function logError(errorType, errorDetails) {
             try {
-                await set(ref(database, 'partidas/' + Date.now()), {
-                    nivel: level,
+                await set(ref(database, 'errores/' + Date.now()), {
+                    tipo: errorType,
+                    detalles: errorDetails,
+                    nivel: currentLevel,
                     movimientos: moves,
-                    fecha: new Date().toISOString()
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
                 });
-                console.log("Datos guardados en Firebase");
-            } catch (error) {
-                console.error("Error al guardar:", error);
+                logEvent(analytics, 'error_occurred', {
+                    error_type: errorType,
+                    level: currentLevel
+                });
+            } catch (e) {
+                console.error("Error al guardar el error:", e);
             }
         }
 
-        // Código del juego
-        document.addEventListener('DOMContentLoaded', () => {
-            const board = document.getElementById('board');
-            const resetBtn = document.getElementById('reset');
-            const levelSelect = document.getElementById('level');
-            const movesDisplay = document.getElementById('moves');
-            const devPanel = document.getElementById('dev-panel');
-            const graphContainer = document.getElementById('graph-container');
+        // Función para registrar eventos del juego
+        async function logGameEvent(eventName, eventData) {
+            try {
+                await set(ref(database, 'eventos/' + Date.now()), {
+                    evento: eventName,
+                    datos: eventData,
+                    timestamp: new Date().toISOString()
+                });
+                logEvent(analytics, eventName, eventData);
+            } catch (e) {
+                console.error("Error al guardar evento:", e);
+            }
+        }
 
-            let moves = 0;
-            let frogs = [];
-            let currentLevel = 3;
-            let devMode = false;
+        // Variables del juego
+        let moves = 0;
+        let frogs = [];
+        let currentLevel = 3;
+        let devMode = false;
 
-            // Soluciones precalculadas para cada nivel
-            const solutions = {
-                1: [
-                    "Inicio: V _ R",
-                    "Paso 1: _ V R  (V se mueve a la derecha)",
-                    "Paso 2: R V _  (R salta sobre V)",
-                    "Paso 3: R _ V  (R se mueve a la izquierda)"
-                ],
-                2: [
-                    "Inicio: V V _ R R",
-                    "Paso 1: V _ V R R",
-                    "Paso 2: V R V _ R",
-                    "Paso 3: V R V R _",
-                    "Paso 4: V R _ R V",
-                    "Paso 5: _ R V R V",
-                    "Paso 6: R _ V R V",
-                    "Paso 7: R R V _ V",
-                    "Paso 8: R R _ V V"
-                ],
-                3: [
-                    "Inicio: V V V _ R R R",
-                    "Paso 1: V V _ V R R R",
-                    "Paso 2: V V R V _ R R",
-                    "Paso 3: V V R V R _ R",
-                    "Paso 4: V V R _ R V R",
-                    "Paso 5: V _ R V R V R",
-                    "Paso 6: _ V R V R V R",
-                    "Paso 7: R V _ V R V R",
-                    "Paso 8: R V R V _ V R",
-                    "Paso 9: R V R V R V _",
-                    "Paso 10: R V R V R _ V",
-                    "Paso 11: R V R _ R V V",
-                    "Paso 12: R _ R V R V V",
-                    "Paso 13: R R _ V R V V",
-                    "Paso 14: R R R V _ V V",
-                    "Paso 15: R R R _ V V V"
-                ],
-                4: [
-                    "Inicio: V V V V _ R R R R",
-                    "Paso 1: V V V _ V R R R R",
-                    "Paso 2: V V V R V _ R R R",
-                    "Paso 3: V V V R V R _ R R",
-                    "Paso 4: V V V R _ R V R R",
-                    "Paso 5: V V _ R V R V R R",
-                    "Paso 6: V _ V R V R V R R",
-                    "Paso 7: _ V V R V R V R R",
-                    "Paso 8: R V V _ V R V R R",
-                    "Paso 9: R V V R V _ V R R",
-                    "Paso 10: R V V R V R V _ R",
-                    "Paso 11: R V V R V R V R _",
-                    "Paso 12: R V V R V R _ R V",
-                    "Paso 13: R V V R _ R V R V",
-                    "Paso 14: R V _ R V R V R V",
-                    "Paso 15: R _ V R V R V R V",
-                    "Paso 16: R R V _ V R V R V",
-                    "Paso 17: R R V R V _ V R V",
-                    "Paso 18: R R V R V R V _ V",
-                    "Paso 19: R R V R V R _ V V",
-                    "Paso 20: R R V R _ R V V V",
-                    "Paso 21: R R _ R V R V V V",
-                    "Paso 22: R R R R _ V V V V"
-                ],
-                5: [
-                    "Inicio: V V V V V _ R R R R R",
-                    "Paso 1: V V V V _ V R R R R R",
-                    "Paso 2: V V V V R V _ R R R R",
-                    "... (continuar con los 35 pasos completos)",
-                    "Paso 35: R R R R R _ V V V V V"
-                ]
-            };
+        // Soluciones precalculadas
+        const solutions = {
+            1: ["Inicio: V _ R", "Paso 1: _ V R", "Paso 2: R V _", "Paso 3: R _ V"],
+            2: ["Inicio: V V _ R R", "Paso 1: V _ V R R", "Paso 2: V R V _ R", "Paso 3: V R V R _", "Paso 4: V R _ R V", "Paso 5: _ R V R V", "Paso 6: R _ V R V", "Paso 7: R R V _ V", "Paso 8: R R _ V V"],
+            3: ["Inicio: V V V _ R R R", "Paso 1: V V _ V R R R", "Paso 2: V V R V _ R R", "Paso 3: V V R V R _ R", "Paso 4: V V R _ R V R", "Paso 5: V _ R V R V R", "Paso 6: _ V R V R V R", "Paso 7: R V _ V R V R", "Paso 8: R V R V _ V R", "Paso 9: R V R V R V _", "Paso 10: R V R V R _ V", "Paso 11: R V R _ R V V", "Paso 12: R _ R V R V V", "Paso 13: R R _ V R V V", "Paso 14: R R R V _ V V", "Paso 15: R R R _ V V V"]
+        };
 
-            // Inicializar juego
-            function initGame() {
-                currentLevel = parseInt(levelSelect.value);
+        // Inicializar juego
+        function initGame() {
+            try {
+                currentLevel = parseInt(document.getElementById('level').value);
                 moves = 0;
-                movesDisplay.textContent = `Movimientos: ${moves}`;
+                document.getElementById('moves').textContent = `Movimientos: ${moves}`;
                 
                 frogs = [
                     ...Array(currentLevel).fill('green'),
@@ -171,12 +124,18 @@
                 ];
                 
                 renderBoard();
-                if (devMode) updateSolutionGraph();
+                logGameEvent('juego_iniciado', { level: currentLevel });
+            } catch (error) {
+                logError('init_error', error.message);
             }
+        }
 
-            // Renderizar tablero
-            function renderBoard() {
+        // Renderizar tablero
+        function renderBoard() {
+            try {
+                const board = document.getElementById('board');
                 board.innerHTML = '';
+                
                 frogs.forEach((frog, index) => {
                     const div = document.createElement('div');
                     if (frog === 'empty') {
@@ -189,10 +148,14 @@
                     }
                     board.appendChild(div);
                 });
+            } catch (error) {
+                logError('render_error', error.message);
             }
+        }
 
-            // Mover rana
-            function moveFrog(index) {
+        // Mover rana
+        function moveFrog(index) {
+            try {
                 const frog = frogs[index];
                 if (frog === 'empty') return;
 
@@ -203,21 +166,40 @@
                 if (frogs[nextIndex] === 'empty') {
                     [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
                     moves++;
-                } else if (
-                    frogs[nextIndex] && frogs[nextIndex] !== frog && 
-                    frogs[jumpIndex] === 'empty'
-                ) {
+                    logGameEvent('movimiento_valido', {
+                        type: 'simple',
+                        from: index,
+                        to: nextIndex
+                    });
+                } else if (frogs[nextIndex] && frogs[nextIndex] !== frog && frogs[jumpIndex] === 'empty') {
                     [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
                     moves++;
+                    logGameEvent('movimiento_valido', {
+                        type: 'salto',
+                        from: index,
+                        over: nextIndex,
+                        to: jumpIndex
+                    });
+                } else {
+                    logError('movimiento_invalido', {
+                        attemptFrom: index,
+                        attemptTo: nextIndex,
+                        boardState: frogs.join(',')
+                    });
+                    return;
                 }
 
-                movesDisplay.textContent = `Movimientos: ${moves}`;
+                document.getElementById('moves').textContent = `Movimientos: ${moves}`;
                 renderBoard();
                 checkWin();
+            } catch (error) {
+                logError('move_error', error.message);
             }
+        }
 
-            // Verificar victoria
-            function checkWin() {
+        // Verificar victoria
+        function checkWin() {
+            try {
                 const winState = [
                     ...Array(currentLevel).fill('red'),
                     'empty',
@@ -225,37 +207,64 @@
                 ];
                 
                 if (JSON.stringify(frogs) === JSON.stringify(winState)) {
-                    // Guardar en Firebase
-                    saveGameData(currentLevel, moves);
+                    logGameEvent('nivel_completado', {
+                        level: currentLevel,
+                        moves: moves,
+                        timestamp: new Date().toISOString()
+                    });
                     
                     setTimeout(() => alert(`¡Ganaste en ${moves} movimientos! 🎉`), 100);
                 }
+            } catch (error) {
+                logError('win_check_error', error.message);
             }
+        }
 
-            // Modo desarrollo (Ctrl+Shift+D)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-                    devMode = !devMode;
-                    devPanel.classList.toggle('hidden', !devMode);
-                    updateSolutionGraph();
-                }
-            });
+        // Modo desarrollo
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                devMode = !devMode;
+                document.getElementById('dev-panel').classList.toggle('hidden', !devMode);
+                updateSolutionGraph();
+            }
+        });
 
-            // Actualizar grafo de solución
-            function updateSolutionGraph() {
+        function updateSolutionGraph() {
+            try {
+                const graphContainer = document.getElementById('graph-container');
                 if (!solutions[currentLevel]) {
                     graphContainer.textContent = "Solución no disponible para este nivel.";
                     return;
                 }
                 graphContainer.textContent = solutions[currentLevel].join('\n');
+            } catch (error) {
+                logError('solution_graph_error', error.message);
             }
+        }
 
-            // Event listeners
-            resetBtn.addEventListener('click', initGame);
-            levelSelect.addEventListener('change', initGame);
+        // Event listeners
+        document.getElementById('reset').addEventListener('click', initGame);
+        document.getElementById('level').addEventListener('change', initGame);
 
-            initGame();
+        // Capturar errores globales
+        window.addEventListener('error', (event) => {
+            logError('global_error', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error?.stack
+            });
         });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            logError('unhandled_promise', {
+                reason: event.reason
+            });
+        });
+
+        // Iniciar el juego
+        initGame();
     </script>
 </body>
 </html>
