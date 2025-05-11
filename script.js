@@ -153,7 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Verificar victoria
-    function checkWin() {
+    function checkWin(// Dentro de checkWin(), después de verificar la victoria:
+database.ref('partidas/' + Date.now()).set({
+  level: currentLevel,
+  moves: moves,
+  fecha: new Date().toLocaleString()
+});) {
         const winState = [
             ...Array(currentLevel).fill('red'),
             'empty',
