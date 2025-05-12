@@ -4,371 +4,263 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Salto de la Rana</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <style>
-        :root {
-            --primary: #4CAF50;
-            --secondary: #F44336;
-            --dark: #2c3e50;
-            --light: #f8f9fa;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f8ff;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: var(--dark);
-        }
-        
-        .container {
-            background-color: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            max-width: 800px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        h1 {
-            color: var(--dark);
-            margin-bottom: 20px;
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        button, select {
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-        }
-        
-        button:hover {
-            opacity: 0.9;
-        }
-        
-        button.secondary {
-            background-color: var(--secondary);
-        }
-        
-        .game-board {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 25px auto;
-        }
-        
-        .frog {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 20px;
-            transition: transform 0.2s;
-        }
-        
-        .frog.green {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        .frog.red {
-            background-color: var(--secondary);
-            color: white;
-        }
-        
-        .empty {
-            width: 60px;
-            height: 60px;
-            background-color: #f5f5f5;
-            border: 2px dashed #ccc;
-            border-radius: 50%;
-        }
-        
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        
-        .modal-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-        }
-        
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        th {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        @media (max-width: 600px) {
-            .frog, .empty {
-                width: 50px;
-                height: 50px;
-            }
-        }
+        .hidden { display: none; }
+        .frog { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; font-size: 20px; transition: transform 0.2s; }
+        .frog.green { background-color: #4CAF50; color: white; }
+        .frog.red { background-color: #F44336; color: white; }
+        .empty { width: 60px; height: 60px; background-color: #f5f5f5; border: 2px dashed #ccc; border-radius: 50%; }
+        .game-board { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 25px auto; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1><i class="fas fa-frog"></i> Salto de la Rana <i class="fas fa-frog"></i></h1>
-        
+        <h1>🐸 ¡Salto de la Rana! 🐸</h1>
         <div class="controls">
-            <select id="level">
-                <option value="1">1 rana</option>
-                <option value="2">2 ranas</option>
-                <option value="3" selected>3 ranas</option>
-                <option value="4">4 ranas</option>
-            </select>
-            <button id="reset"><i class="fas fa-redo"></i> Reiniciar</button>
-            <button id="stats-btn"><i class="fas fa-chart-bar"></i> Estadísticas</button>
-            <span id="moves"><i class="fas fa-shoe-prints"></i> Movimientos: 0</span>
+            <div class="control-group">
+                <label for="level">Nivel:</label>
+                <select id="level">
+                    <option value="1">1 rana</option>
+                    <option value="2">2 ranas</option>
+                    <option value="3" selected>3 ranas</option>
+                    <option value="4">4 ranas</option>
+                    <option value="5">5 ranas</option>
+                </select>
+            </div>
+            <button id="reset">Reiniciar</button>
+            <span id="moves">Movimientos: 0</span>
         </div>
-        
         <div class="game-board" id="board"></div>
         
-        <!-- Modal de Estadísticas -->
-        <div id="stats-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h2><i class="fas fa-chart-pie"></i> Estadísticas</h2>
-                <div>
-                    <h3><i class="fas fa-trophy"></i> Ranking</h3>
-                    <table id="ranking-table">
-                        <thead>
-                            <tr>
-                                <th>Jugador</th>
-                                <th>Movimientos</th>
-                                <th>Nivel</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <button id="close-stats" class="secondary" style="margin-top: 20px;"><i class="fas fa-times"></i> Cerrar</button>
-            </div>
+        <div id="dev-panel" class="hidden">
+            <h3>🔧 Modo Desarrollo</h3>
+            <p><small>Presiona Ctrl+Shift+D para ocultar</small></p>
+            <div id="graph-container"></div>
         </div>
     </div>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    
-    <script>
-        // Configuración de Firebase (REEMPLAZA CON TUS DATOS)
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
+
+        // Configuración de Firebase
         const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROYECTO.firebaseapp.com",
-            databaseURL: "https://TU_PROYECTO-default-rtdb.firebaseio.com",
-            projectId: "TU_PROYECTO",
-            storageBucket: "TU_PROYECTO.appspot.com",
-            messagingSenderId: "TU_SENDER_ID",
-            appId: "TU_APP_ID"
+            apiKey: "AIzaSyB3wLx5mtJLjODg6qNrWl76v2nka_Bhvq8",
+            authDomain: "salto-de-la-rana-ab7f9.firebaseapp.com",
+            databaseURL: "https://salto-de-la-rana-ab7f9-default-rtdb.firebaseio.com",
+            projectId: "salto-de-la-rana-ab7f9",
+            storageBucket: "salto-de-la-rana-ab7f9.firebasestorage.app",
+            messagingSenderId: "891977313658",
+            appId: "1:891977313658:web:5d0f2be7d60cf425e73ac3",
+            measurementId: "G-Z56995RQ2J"
         };
 
         // Inicializa Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const analytics = getAnalytics(app);
+
+        // Función para registrar errores
+        async function logError(errorType, errorDetails) {
+            try {
+                await set(ref(database, 'errores/' + Date.now()), {
+                    tipo: errorType,
+                    detalles: errorDetails,
+                    nivel: currentLevel,
+                    movimientos: moves,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                });
+                logEvent(analytics, 'error_occurred', {
+                    error_type: errorType,
+                    level: currentLevel
+                });
+            } catch (e) {
+                console.error("Error al guardar el error:", e);
+            }
+        }
+
+        // Función para registrar eventos del juego
+        async function logGameEvent(eventName, eventData) {
+            try {
+                await set(ref(database, 'eventos/' + Date.now()), {
+                    evento: eventName,
+                    datos: eventData,
+                    timestamp: new Date().toISOString()
+                });
+                logEvent(analytics, eventName, eventData);
+            } catch (e) {
+                console.error("Error al guardar evento:", e);
+            }
+        }
 
         // Variables del juego
         let moves = 0;
         let frogs = [];
         let currentLevel = 3;
-        let currentPlayer = null;
+        let devMode = false;
 
-        // Elementos del DOM
-        const board = document.getElementById('board');
-        const resetBtn = document.getElementById('reset');
-        const levelSelect = document.getElementById('level');
-        const movesDisplay = document.getElementById('moves');
-        const statsBtn = document.getElementById('stats-btn');
-        const statsModal = document.getElementById('stats-modal');
-        const closeStats = document.getElementById('close-stats');
-        const rankingTable = document.getElementById('ranking-table').querySelector('tbody');
+        // Soluciones precalculadas
+        const solutions = {
+            1: ["Inicio: V _ R", "Paso 1: _ V R", "Paso 2: R V _", "Paso 3: R _ V"],
+            2: ["Inicio: V V _ R R", "Paso 1: V _ V R R", "Paso 2: V R V _ R", "Paso 3: V R V R _", "Paso 4: V R _ R V", "Paso 5: _ R V R V", "Paso 6: R _ V R V", "Paso 7: R R V _ V", "Paso 8: R R _ V V"],
+            3: ["Inicio: V V V _ R R R", "Paso 1: V V _ V R R R", "Paso 2: V V R V _ R R", "Paso 3: V V R V R _ R", "Paso 4: V V R _ R V R", "Paso 5: V _ R V R V R", "Paso 6: _ V R V R V R", "Paso 7: R V _ V R V R", "Paso 8: R V R V _ V R", "Paso 9: R V R V R V _", "Paso 10: R V R V R _ V", "Paso 11: R V R _ R V V", "Paso 12: R _ R V R V V", "Paso 13: R R _ V R V V", "Paso 14: R R R V _ V V", "Paso 15: R R R _ V V V"]
+        };
 
         // Inicializar juego
         function initGame() {
-            currentLevel = parseInt(levelSelect.value);
-            moves = 0;
-            movesDisplay.textContent = `Movimientos: ${moves}`;
-            
-            frogs = [
-                ...Array(currentLevel).fill('green'),
-                'empty',
-                ...Array(currentLevel).fill('red')
-            ];
-            
-            renderBoard();
+            try {
+                currentLevel = parseInt(document.getElementById('level').value);
+                moves = 0;
+                document.getElementById('moves').textContent = `Movimientos: ${moves}`;
+                
+                frogs = [
+                    ...Array(currentLevel).fill('green'),
+                    'empty',
+                    ...Array(currentLevel).fill('red')
+                ];
+                
+                renderBoard();
+                logGameEvent('juego_iniciado', { level: currentLevel });
+            } catch (error) {
+                logError('init_error', error.message);
+            }
         }
 
         // Renderizar tablero
         function renderBoard() {
-            board.innerHTML = '';
-            frogs.forEach((frog, index) => {
-                const div = document.createElement('div');
-                if (frog === 'empty') {
-                    div.className = 'empty';
-                } else {
-                    div.className = `frog ${frog}`;
-                    div.textContent = frog === 'green' ? '→' : '←';
-                    div.addEventListener('click', () => moveFrog(index));
-                }
-                board.appendChild(div);
-            });
+            try {
+                const board = document.getElementById('board');
+                board.innerHTML = '';
+                
+                frogs.forEach((frog, index) => {
+                    const div = document.createElement('div');
+                    if (frog === 'empty') {
+                        div.className = 'empty';
+                        div.addEventListener('click', () => moveFrog(index));
+                    } else {
+                        div.className = `frog ${frog}`;
+                        div.textContent = frog === 'green' ? '→' : '←';
+                        div.addEventListener('click', () => moveFrog(index));
+                    }
+                    board.appendChild(div);
+                });
+            } catch (error) {
+                logError('render_error', error.message);
+            }
         }
 
         // Mover rana
         function moveFrog(index) {
-            const frog = frogs[index];
-            if (frog === 'empty') return;
-            
-            const direction = frog === 'green' ? 1 : -1;
-            const nextIndex = index + direction;
-            const jumpIndex = index + 2 * direction;
-            
-            // Movimiento simple
-            if (frogs[nextIndex] === 'empty') {
-                [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
-                moves++;
-            } 
-            // Salto sobre otra rana
-            else if (frogs[nextIndex] && frogs[nextIndex] !== frog && frogs[jumpIndex] === 'empty') {
-                [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
-                moves++;
-            } else {
-                return; // Movimiento inválido
+            try {
+                const frog = frogs[index];
+                if (frog === 'empty') return;
+
+                const direction = frog === 'green' ? 1 : -1;
+                const nextIndex = index + direction;
+                const jumpIndex = index + 2 * direction;
+
+                if (frogs[nextIndex] === 'empty') {
+                    [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
+                    moves++;
+                    logGameEvent('movimiento_valido', {
+                        type: 'simple',
+                        from: index,
+                        to: nextIndex
+                    });
+                } else if (frogs[nextIndex] && frogs[nextIndex] !== frog && frogs[jumpIndex] === 'empty') {
+                    [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
+                    moves++;
+                    logGameEvent('movimiento_valido', {
+                        type: 'salto',
+                        from: index,
+                        over: nextIndex,
+                        to: jumpIndex
+                    });
+                } else {
+                    logError('movimiento_invalido', {
+                        attemptFrom: index,
+                        attemptTo: nextIndex,
+                        boardState: frogs.join(',')
+                    });
+                    return;
+                }
+
+                document.getElementById('moves').textContent = `Movimientos: ${moves}`;
+                renderBoard();
+                checkWin();
+            } catch (error) {
+                logError('move_error', error.message);
             }
-            
-            movesDisplay.textContent = `Movimientos: ${moves}`;
-            renderBoard();
-            checkWin();
         }
 
         // Verificar victoria
         function checkWin() {
-            const winState = [
-                ...Array(currentLevel).fill('red'),
-                'empty',
-                ...Array(currentLevel).fill('green')
-            ];
-            
-            if (JSON.stringify(frogs) === JSON.stringify(winState)) {
-                const playerName = prompt(`¡Ganaste en ${moves} movimientos! Ingresa tu nombre:`, "Anónimo");
-                if (playerName !== null) {
-                    currentPlayer = playerName.trim() || "Anónimo";
-                    saveScore();
+            try {
+                const winState = [
+                    ...Array(currentLevel).fill('red'),
+                    'empty',
+                    ...Array(currentLevel).fill('green')
+                ];
+                
+                if (JSON.stringify(frogs) === JSON.stringify(winState)) {
+                    logGameEvent('nivel_completado', {
+                        level: currentLevel,
+                        moves: moves,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    setTimeout(() => alert(`¡Ganaste en ${moves} movimientos! 🎉`), 100);
                 }
+            } catch (error) {
+                logError('win_check_error', error.message);
             }
         }
 
-        // Guardar puntuación en Firebase
-        function saveScore() {
-            const gameData = {
-                player: currentPlayer,
-                moves: moves,
-                level: currentLevel,
-                date: new Date().toISOString()
-            };
+        // Modo desarrollo
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                devMode = !devMode;
+                document.getElementById('dev-panel').classList.toggle('hidden', !devMode);
+                updateSolutionGraph();
+            }
+        });
 
-            // Guarda en la base de datos
-            database.ref('games').push(gameData)
-                .then(() => {
-                    console.log("Partida guardada en Firebase");
-                    updateStats();
-                })
-                .catch(error => {
-                    console.error("Error al guardar:", error);
-                });
-        }
-
-        // Actualizar estadísticas desde Firebase
-        function updateStats() {
-            database.ref('games').orderByChild('moves').limitToLast(10).once('value')
-                .then(snapshot => {
-                    rankingTable.innerHTML = '';
-                    const games = [];
-                    
-                    snapshot.forEach(childSnapshot => {
-                        games.push(childSnapshot.val());
-                    });
-
-                    // Ordena por movimientos (ascendente)
-                    games.sort((a, b) => a.moves - b.moves);
-                    
-                    games.forEach((game, index) => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${game.player}</td>
-                            <td>${game.moves}</td>
-                            <td>${game.level}</td>
-                        `;
-                        rankingTable.appendChild(row);
-                    });
-                })
-                .catch(error => {
-                    console.error("Error al cargar datos:", error);
-                });
+        function updateSolutionGraph() {
+            try {
+                const graphContainer = document.getElementById('graph-container');
+                if (!solutions[currentLevel]) {
+                    graphContainer.textContent = "Solución no disponible para este nivel.";
+                    return;
+                }
+                graphContainer.textContent = solutions[currentLevel].join('\n');
+            } catch (error) {
+                logError('solution_graph_error', error.message);
+            }
         }
 
         // Event listeners
-        resetBtn.addEventListener('click', initGame);
-        levelSelect.addEventListener('change', initGame);
-        
-        statsBtn.addEventListener('click', () => {
-            updateStats();
-            statsModal.style.display = 'flex';
+        document.getElementById('reset').addEventListener('click', initGame);
+        document.getElementById('level').addEventListener('change', initGame);
+
+        // Capturar errores globales
+        window.addEventListener('error', (event) => {
+            logError('global_error', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error?.stack
+            });
         });
-        
-        closeStats.addEventListener('click', () => {
-            statsModal.style.display = 'none';
+
+        window.addEventListener('unhandledrejection', (event) => {
+            logError('unhandled_promise', {
+                reason: event.reason
+            });
         });
 
         // Iniciar el juego
