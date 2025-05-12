@@ -3,23 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salto de la Rana</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Salto de la Rana con Visualización de Grafos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .hidden { display: none; }
-        .frog { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; font-size: 20px; transition: transform 0.2s; }
-        .frog.green { background-color: #4CAF50; color: white; }
-        .frog.red { background-color: #F44336; color: white; }
-        .empty { width: 60px; height: 60px; background-color: #f5f5f5; border: 2px dashed #ccc; border-radius: 50%; }
-        .game-board { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 25px auto; }
+        :root {
+            --primary: #4CAF50;
+            --secondary: #F44336;
+            --dark: #2c3e50;
+            --light: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+        .container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: var(--dark);
+        }
+        .game-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .game-container, .graph-container {
+            flex: 1;
+            min-width: 300px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        select, button {
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.secondary {
+            background-color: var(--secondary);
+        }
+        button.secondary:hover {
+            background-color: #d32f2f;
+        }
+        #moves {
+            font-weight: bold;
+        }
+        .game-board {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 25px auto;
+        }
+        .frog {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 20px;
+            transition: transform 0.2s;
+            user-select: none;
+        }
+        .frog:hover {
+            transform: scale(1.05);
+        }
+        .frog.green {
+            background-color: var(--primary);
+            color: white;
+        }
+        .frog.red {
+            background-color: var(--secondary);
+            color: white;
+        }
+        .empty {
+            width: 60px;
+            height: 60px;
+            background-color: #f5f5f5;
+            border: 2px dashed #ccc;
+            border-radius: 50%;
+        }
+        #graph {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: white;
+        }
+        .graph-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .node-info {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: var(--light);
+            border-radius: 8px;
+        }
+        @media (max-width: 768px) {
+            .game-section {
+                flex-direction: column;
+            }
+            .frog, .empty {
+                width: 50px;
+                height: 50px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🐸 ¡Salto de la Rana! 🐸</h1>
+        <h1><i class="fas fa-frog"></i> ¡Salto de la Rana! <i class="fas fa-project-diagram"></i> Visualización de Grafos</h1>
+        
         <div class="controls">
             <div class="control-group">
-                <label for="level">Nivel:</label>
+                <label for="level"><i class="fas fa-layer-group"></i> Nivel:</label>
                 <select id="level">
                     <option value="1">1 rana</option>
                     <option value="2">2 ranas</option>
@@ -28,23 +163,36 @@
                     <option value="5">5 ranas</option>
                 </select>
             </div>
-            <button id="reset">Reiniciar</button>
-            <span id="moves">Movimientos: 0</span>
+            <button id="reset"><i class="fas fa-redo"></i> Reiniciar</button>
+            <button id="show-graph" class="secondary"><i class="fas fa-project-diagram"></i> Mostrar Grafo</button>
+            <span id="moves"><i class="fas fa-shoe-prints"></i> Movimientos: 0</span>
         </div>
-        <div class="game-board" id="board"></div>
         
-        <div id="dev-panel" class="hidden">
-            <h3>🔧 Modo Desarrollo</h3>
-            <p><small>Presiona Ctrl+Shift+D para ocultar</small></p>
-            <div id="graph-container"></div>
+        <div class="game-section">
+            <div class="game-container">
+                <div class="game-board" id="board"></div>
+            </div>
+            <div class="graph-container">
+                <div id="graph"></div>
+                <div class="graph-controls">
+                    <button id="center-graph"><i class="fas fa-expand"></i> Centrar</button>
+                    <button id="export-graph"><i class="fas fa-download"></i> Exportar</button>
+                </div>
+                <div class="node-info" id="node-info">
+                    Selecciona un nodo en el grafo para ver detalles
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+        import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
         import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
+
+        // Importar vis-network para visualización de grafos
+        import { DataSet, Network } from "https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.js";
 
         // Configuración de Firebase
         const firebaseConfig = {
@@ -62,6 +210,305 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const analytics = getAnalytics(app);
+
+        // Variables del juego
+        let moves = 0;
+        let frogs = [];
+        let currentLevel = 3;
+        let gameId = null;
+        let moveHistory = [];
+        let graphData = {
+            nodes: new DataSet(),
+            edges: new DataSet()
+        };
+        let network = null;
+
+        // Inicializar juego
+        function initGame() {
+            currentLevel = parseInt(document.getElementById('level').value);
+            moves = 0;
+            document.getElementById('moves').textContent = `Movimientos: ${moves}`;
+            
+            frogs = [
+                ...Array(currentLevel).fill('green'),
+                'empty',
+                ...Array(currentLevel).fill('red')
+            ];
+            
+            // Iniciar nuevo juego en Firebase
+            gameId = push(ref(database, 'juegos')).key;
+            moveHistory = [];
+            
+            // Guardar estado inicial
+            const initialState = frogs.join('');
+            saveGameState(initialState, 0);
+            
+            renderBoard();
+            logEvent(analytics, 'game_start', { level: currentLevel });
+            
+            // Inicializar grafo con el estado inicial
+            initGraph(initialState);
+        }
+
+        // Renderizar tablero
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            
+            frogs.forEach((frog, index) => {
+                const div = document.createElement('div');
+                if (frog === 'empty') {
+                    div.className = 'empty';
+                    div.addEventListener('click', () => moveFrog(index));
+                } else {
+                    div.className = `frog ${frog}`;
+                    div.textContent = frog === 'green' ? '→' : '←';
+                    div.addEventListener('click', () => moveFrog(index));
+                }
+                board.appendChild(div);
+            });
+        }
+
+        // Mover rana
+        function moveFrog(index) {
+            const frog = frogs[index];
+            if (frog === 'empty') return;
+
+            const direction = frog === 'green' ? 1 : -1;
+            const nextIndex = index + direction;
+            const jumpIndex = index + 2 * direction;
+
+            let moveType = '';
+            let moveDescription = '';
+            let newState = '';
+            
+            if (frogs[nextIndex] === 'empty') {
+                // Movimiento simple
+                [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
+                moves++;
+                moveType = 'simple';
+                moveDescription = `Movimiento simple de ${index} a ${nextIndex}`;
+                newState = frogs.join('');
+            } else if (frogs[nextIndex] && frogs[nextIndex] !== frog && frogs[jumpIndex] === 'empty') {
+                // Salto sobre otra rana
+                [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
+                moves++;
+                moveType = 'salto';
+                moveDescription = `Salto de ${index} sobre ${nextIndex} a ${jumpIndex}`;
+                newState = frogs.join('');
+            } else {
+                // Movimiento inválido
+                logError('movimiento_invalido', {
+                    from: index,
+                    boardState: frogs.join(',')
+                });
+                return;
+            }
+
+            document.getElementById('moves').textContent = `Movimientos: ${moves}`;
+            
+            // Guardar el movimiento y actualizar el grafo
+            saveGameState(newState, moves, moveType, moveDescription);
+            
+            renderBoard();
+            checkWin();
+        }
+
+        // Guardar estado del juego en Firebase y actualizar el grafo
+        function saveGameState(state, moveCount, moveType = '', description = '') {
+            const moveId = push(ref(database, `juegos/${gameId}/movimientos`)).key;
+            const moveData = {
+                estado: state,
+                movimiento: moveCount,
+                tipo: moveType,
+                descripcion: description,
+                timestamp: new Date().toISOString()
+            };
+            
+            set(ref(database, `juegos/${gameId}/movimientos/${moveId}`), moveData);
+            
+            // Agregar al historial local
+            moveHistory.push({
+                id: moveId,
+                ...moveData
+            });
+            
+            // Actualizar el grafo
+            updateGraph(moveId, state, moveCount, moveType, description);
+        }
+
+        // Inicializar visualización del grafo
+        function initGraph(initialState) {
+            // Limpiar datos anteriores
+            graphData.nodes.clear();
+            graphData.edges.clear();
+            
+            // Crear nodo inicial
+            graphData.nodes.add({
+                id: initialState,
+                label: `Inicio\n${formatState(initialState)}`,
+                level: 0,
+                shape: 'box',
+                color: {
+                    background: '#4CAF50',
+                    border: '#2E7D32'
+                },
+                font: { size: 12 }
+            });
+            
+            // Configuración del grafo
+            const options = {
+                layout: {
+                    hierarchical: {
+                        direction: 'LR',
+                        sortMethod: 'directed'
+                    }
+                },
+                physics: {
+                    hierarchicalRepulsion: {
+                        nodeDistance: 120
+                    }
+                },
+                nodes: {
+                    shape: 'box',
+                    margin: 10,
+                    widthConstraint: {
+                        maximum: 150
+                    }
+                },
+                edges: {
+                    arrows: 'to',
+                    smooth: {
+                        type: 'cubicBezier',
+                        forceDirection: 'horizontal'
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200
+                }
+            };
+            
+            // Crear la red
+            const container = document.getElementById('graph');
+            network = new Network(container, graphData, options);
+            
+            // Evento al seleccionar un nodo
+            network.on('selectNode', (params) => {
+                const nodeId = params.nodes[0];
+                const node = graphData.nodes.get(nodeId);
+                const movesToReach = node.level;
+                
+                document.getElementById('node-info').innerHTML = `
+                    <strong>Estado:</strong> ${formatState(nodeId)}<br>
+                    <strong>Movimientos para alcanzar:</strong> ${movesToReach}<br>
+                    <strong>Tipo:</strong> ${nodeId === moveHistory[moveHistory.length-1]?.estado ? 'Estado actual' : 'Estado anterior'}
+                `;
+            });
+            
+            // Centrar el grafo al inicio
+            network.fit();
+        }
+
+        // Actualizar el grafo con un nuevo estado
+        function updateGraph(moveId, state, moveCount, moveType, description) {
+            const prevState = moveHistory.length > 1 ? moveHistory[moveHistory.length-2].estado : state;
+            
+            // Agregar nuevo nodo si no existe
+            if (!graphData.nodes.get(state)) {
+                graphData.nodes.add({
+                    id: state,
+                    label: `${moveCount} movimientos\n${formatState(state)}`,
+                    level: moveCount,
+                    shape: 'box',
+                    color: {
+                        background: moveCount % 2 === 0 ? '#E3F2FD' : '#E8F5E9',
+                        border: moveCount % 2 === 0 ? '#90CAF9' : '#A5D6A7'
+                    },
+                    font: { size: 12 }
+                });
+            }
+            
+            // Agregar arista desde el estado anterior
+            graphData.edges.add({
+                id: `${prevState}-${state}`,
+                from: prevState,
+                to: state,
+                label: description,
+                title: description,
+                color: moveType === 'salto' ? '#FF5722' : '#2196F3',
+                width: 2
+            });
+            
+            // Resaltar el último movimiento
+            graphData.nodes.update({
+                id: state,
+                color: {
+                    background: '#FFEB3B',
+                    border: '#FBC02D'
+                }
+            });
+            
+            // Centrar el último nodo
+            network.fit({
+                nodes: [state],
+                animation: true
+            });
+        }
+
+        // Formatear estado para mostrar en el grafo
+        function formatState(state) {
+            return state.replace(/(green)/g, '→')
+                       .replace(/(red)/g, '←')
+                       .replace(/(empty)/g, '_');
+        }
+
+        // Verificar victoria
+        function checkWin() {
+            const winState = [
+                ...Array(currentLevel).fill('red'),
+                'empty',
+                ...Array(currentLevel).fill('green')
+            ].join('');
+            
+            if (frogs.join('') === winState) {
+                // Marcar nodo final como solución
+                graphData.nodes.update({
+                    id: winState,
+                    color: {
+                        background: '#8BC34A',
+                        border: '#689F38'
+                    },
+                    shape: 'diamond'
+                });
+                
+                logGameEvent('nivel_completado', {
+                    level: currentLevel,
+                    moves: moves,
+                    estados: moveHistory.length
+                });
+                
+                setTimeout(() => {
+                    alert(`¡Ganaste en ${moves} movimientos! 🎉`);
+                    
+                    // Mostrar camino óptimo
+                    highlightOptimalPath(winState);
+                }, 100);
+            }
+        }
+
+        // Resaltar el camino óptimo en el grafo
+        function highlightOptimalPath(winState) {
+            // Implementación básica - en una versión completa podrías analizar el camino más corto
+            const edges = graphData.edges.get();
+            edges.forEach(edge => {
+                graphData.edges.update({
+                    id: edge.id,
+                    color: edge.to === winState ? '#4CAF50' : '#E0E0E0',
+                    width: edge.to === winState ? 3 : 1
+                });
+            });
+        }
 
         // Función para registrar errores
         async function logError(errorType, errorDetails) {
@@ -97,170 +544,31 @@
             }
         }
 
-        // Variables del juego
-        let moves = 0;
-        let frogs = [];
-        let currentLevel = 3;
-        let devMode = false;
-
-        // Soluciones precalculadas
-        const solutions = {
-            1: ["Inicio: V _ R", "Paso 1: _ V R", "Paso 2: R V _", "Paso 3: R _ V"],
-            2: ["Inicio: V V _ R R", "Paso 1: V _ V R R", "Paso 2: V R V _ R", "Paso 3: V R V R _", "Paso 4: V R _ R V", "Paso 5: _ R V R V", "Paso 6: R _ V R V", "Paso 7: R R V _ V", "Paso 8: R R _ V V"],
-            3: ["Inicio: V V V _ R R R", "Paso 1: V V _ V R R R", "Paso 2: V V R V _ R R", "Paso 3: V V R V R _ R", "Paso 4: V V R _ R V R", "Paso 5: V _ R V R V R", "Paso 6: _ V R V R V R", "Paso 7: R V _ V R V R", "Paso 8: R V R V _ V R", "Paso 9: R V R V R V _", "Paso 10: R V R V R _ V", "Paso 11: R V R _ R V V", "Paso 12: R _ R V R V V", "Paso 13: R R _ V R V V", "Paso 14: R R R V _ V V", "Paso 15: R R R _ V V V"]
-        };
-
-        // Inicializar juego
-        function initGame() {
-            try {
-                currentLevel = parseInt(document.getElementById('level').value);
-                moves = 0;
-                document.getElementById('moves').textContent = `Movimientos: ${moves}`;
-                
-                frogs = [
-                    ...Array(currentLevel).fill('green'),
-                    'empty',
-                    ...Array(currentLevel).fill('red')
-                ];
-                
-                renderBoard();
-                logGameEvent('juego_iniciado', { level: currentLevel });
-            } catch (error) {
-                logError('init_error', error.message);
-            }
-        }
-
-        // Renderizar tablero
-        function renderBoard() {
-            try {
-                const board = document.getElementById('board');
-                board.innerHTML = '';
-                
-                frogs.forEach((frog, index) => {
-                    const div = document.createElement('div');
-                    if (frog === 'empty') {
-                        div.className = 'empty';
-                        div.addEventListener('click', () => moveFrog(index));
-                    } else {
-                        div.className = `frog ${frog}`;
-                        div.textContent = frog === 'green' ? '→' : '←';
-                        div.addEventListener('click', () => moveFrog(index));
-                    }
-                    board.appendChild(div);
-                });
-            } catch (error) {
-                logError('render_error', error.message);
-            }
-        }
-
-        // Mover rana
-        function moveFrog(index) {
-            try {
-                const frog = frogs[index];
-                if (frog === 'empty') return;
-
-                const direction = frog === 'green' ? 1 : -1;
-                const nextIndex = index + direction;
-                const jumpIndex = index + 2 * direction;
-
-                if (frogs[nextIndex] === 'empty') {
-                    [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
-                    moves++;
-                    logGameEvent('movimiento_valido', {
-                        type: 'simple',
-                        from: index,
-                        to: nextIndex
-                    });
-                } else if (frogs[nextIndex] && frogs[nextIndex] !== frog && frogs[jumpIndex] === 'empty') {
-                    [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
-                    moves++;
-                    logGameEvent('movimiento_valido', {
-                        type: 'salto',
-                        from: index,
-                        over: nextIndex,
-                        to: jumpIndex
-                    });
-                } else {
-                    logError('movimiento_invalido', {
-                        attemptFrom: index,
-                        attemptTo: nextIndex,
-                        boardState: frogs.join(',')
-                    });
-                    return;
-                }
-
-                document.getElementById('moves').textContent = `Movimientos: ${moves}`;
-                renderBoard();
-                checkWin();
-            } catch (error) {
-                logError('move_error', error.message);
-            }
-        }
-
-        // Verificar victoria
-        function checkWin() {
-            try {
-                const winState = [
-                    ...Array(currentLevel).fill('red'),
-                    'empty',
-                    ...Array(currentLevel).fill('green')
-                ];
-                
-                if (JSON.stringify(frogs) === JSON.stringify(winState)) {
-                    logGameEvent('nivel_completado', {
-                        level: currentLevel,
-                        moves: moves,
-                        timestamp: new Date().toISOString()
-                    });
-                    
-                    setTimeout(() => alert(`¡Ganaste en ${moves} movimientos! 🎉`), 100);
-                }
-            } catch (error) {
-                logError('win_check_error', error.message);
-            }
-        }
-
-        // Modo desarrollo
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-                devMode = !devMode;
-                document.getElementById('dev-panel').classList.toggle('hidden', !devMode);
-                updateSolutionGraph();
-            }
-        });
-
-        function updateSolutionGraph() {
-            try {
-                const graphContainer = document.getElementById('graph-container');
-                if (!solutions[currentLevel]) {
-                    graphContainer.textContent = "Solución no disponible para este nivel.";
-                    return;
-                }
-                graphContainer.textContent = solutions[currentLevel].join('\n');
-            } catch (error) {
-                logError('solution_graph_error', error.message);
-            }
-        }
-
         // Event listeners
         document.getElementById('reset').addEventListener('click', initGame);
         document.getElementById('level').addEventListener('change', initGame);
-
-        // Capturar errores globales
-        window.addEventListener('error', (event) => {
-            logError('global_error', {
-                message: event.message,
-                filename: event.filename,
-                lineno: event.lineno,
-                colno: event.colno,
-                error: event.error?.stack
+        document.getElementById('show-graph').addEventListener('click', () => {
+            network.fit();
+        });
+        document.getElementById('center-graph').addEventListener('click', () => {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
             });
         });
-
-        window.addEventListener('unhandledrejection', (event) => {
-            logError('unhandled_promise', {
-                reason: event.reason
-            });
+        document.getElementById('export-graph').addEventListener('click', () => {
+            const data = {
+                nodes: graphData.nodes.get(),
+                edges: graphData.edges.get()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `salto-de-rana-nivel-${currentLevel}.json`;
+            a.click();
         });
 
         // Iniciar el juego
