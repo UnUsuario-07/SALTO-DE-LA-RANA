@@ -203,12 +203,51 @@
         <div class="game-board" id="board"></div>
     </div>
 
-    <script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
+        import { getDatabase, ref, set, push } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+        import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
+
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3wLx5mtJLjODg6qNrWl76v2nka_Bhvq8",
+            authDomain: "salto-de-la-rana-ab7f9.firebaseapp.com",
+            databaseURL: "https://salto-de-la-rana-ab7f9-default-rtdb.firebaseio.com",
+            projectId: "salto-de-la-rana-ab7f9",
+            storageBucket: "salto-de-la-rana-ab7f9.appspot.com",
+            messagingSenderId: "891977313658",
+            appId: "1:891977313658:web:5d0f2be7d60cf425e73ac3",
+            measurementId: "G-Z56995RQ2J"
+        };
+
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const analytics = getAnalytics(app);
+
         // Variables del juego
         let moves = 0;
         let frogs = [];
         let currentLevel = 3;
         let currentPlayer = null;
+        let startTime = null;
+
+        // Función para registrar eventos
+        async function logEventToFirebase(eventType, eventData) {
+            try {
+                await push(ref(database, `eventos/${currentPlayer || 'anonimo'}`), {
+                    ...eventData,
+                    tipo: eventType,
+                    timestamp: new Date().toISOString(),
+                    nivel: currentLevel,
+                    jugador: currentPlayer || 'anonimo'
+                });
+                logEvent(analytics, eventType, eventData);
+            } catch (e) {
+                console.error("Error al registrar evento:", e);
+            }
+        }
 
         // Inicializar juego
         function initGame() {
@@ -222,7 +261,9 @@
                 ...Array(currentLevel).fill('red')
             ];
             
+            startTime = new Date();
             renderBoard();
+            logEventToFirebase('juego_iniciado', { movimientos: moves });
         }
 
         // Renderizar tablero
@@ -244,7 +285,7 @@
             });
         }
 
-        // Mover rana
+        // Mover rana (con saltos sobre mismo color)
         function moveFrog(index) {
             const frog = frogs[index];
             if (frog === 'empty') return;
@@ -257,16 +298,37 @@
             if (frogs[nextIndex] === 'empty') {
                 [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
                 moves++;
+                logEventToFirebase('movimiento', {
+                    tipo: 'simple',
+                    desde: index,
+                    hacia: nextIndex,
+                    color: frog
+                });
             } 
-            // Salto sobre otra rana
+            // Salto sobre otra rana (mismo color o diferente)
             else if (
                 frogs[nextIndex] && 
-                frogs[nextIndex] !== frog && 
-                frogs[jumpIndex] === 'empty'
+                frogs[jumpIndex] === 'empty' && 
+                (
+                    frogs[nextIndex] === frog ||   // Mismo color
+                    frogs[nextIndex] !== frog     // Color diferente
+                )
             ) {
                 [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
                 moves++;
+                logEventToFirebase('movimiento', {
+                    tipo: 'salto',
+                    desde: index,
+                    sobre: nextIndex,
+                    hacia: jumpIndex,
+                    color: frog,
+                    sobreColor: frogs[nextIndex]
+                });
             } else {
+                logEventToFirebase('movimiento_invalido', {
+                    intentoDesde: index,
+                    intentoHacia: nextIndex
+                });
                 return;
             }
 
@@ -284,6 +346,15 @@
             ];
             
             if (JSON.stringify(frogs) === JSON.stringify(winState)) {
+                const endTime = new Date();
+                const tiempo = (endTime - startTime) / 1000;
+                
+                logEventToFirebase('partida_completada', {
+                    movimientos: moves,
+                    tiempoSegundos: tiempo,
+                    nivel: currentLevel
+                });
+                
                 setTimeout(() => alert(`¡${currentPlayer || 'Jugador'} ganó en ${moves} movimientos! 🎉`), 100);
             }
         }
