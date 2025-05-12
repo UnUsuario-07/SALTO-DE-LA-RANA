@@ -4,20 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Salto de la Rana</title>
-    <link rel="stylesheet" href="style.css">
     <style>
         .hidden { display: none; }
-        .frog { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; font-size: 20px; transition: transform 0.2s; }
+        .frog { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 20px; 
+            transition: transform 0.2s; 
+        }
         .frog.green { background-color: #4CAF50; color: white; }
         .frog.red { background-color: #F44336; color: white; }
-        .empty { width: 60px; height: 60px; background-color: #f5f5f5; border: 2px dashed #ccc; border-radius: 50%; }
-        .game-board { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 25px auto; }
+        .empty { 
+            width: 60px; 
+            height: 60px; 
+            background-color: #f5f5f5; 
+            border: 2px dashed #ccc; 
+            border-radius: 50%; 
+        }
+        .game-board { 
+            display: flex; 
+            justify-content: center; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+            margin: 25px auto; 
+        }
+        .player-setup { 
+            margin: 20px auto; 
+            text-align: center; 
+        }
+        #player-name { 
+            padding: 8px; 
+            margin-right: 10px; 
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐸 ¡Salto de la Rana! 🐸</h1>
-        <div class="controls">
+        
+        <div class="player-setup">
+            <label for="player-name">Nombre:</label>
+            <input type="text" id="player-name" placeholder="Tu nombre o ID">
+            <button id="start-game">Comenzar</button>
+        </div>
+
+        <div class="controls hidden" id="game-controls">
             <div class="control-group">
                 <label for="level">Nivel:</label>
                 <select id="level">
@@ -31,6 +68,7 @@
             <button id="reset">Reiniciar</button>
             <span id="moves">Movimientos: 0</span>
         </div>
+
         <div class="game-board" id="board"></div>
         
         <div id="dev-panel" class="hidden">
@@ -63,10 +101,26 @@
         const database = getDatabase(app);
         const analytics = getAnalytics(app);
 
+        // Variables del juego
+        let moves = 0;
+        let frogs = [];
+        let currentLevel = 3;
+        let devMode = false;
+        let startTime = null;
+        let currentPlayer = null;
+
+        // Soluciones precalculadas
+        const solutions = {
+            1: ["Inicio: V _ R", "Paso 1: _ V R", "Paso 2: R V _", "Paso 3: R _ V"],
+            2: ["Inicio: V V _ R R", "Paso 1: V _ V R R", "Paso 2: V R V _ R", "Paso 3: V R V R _", "Paso 4: V R _ R V", "Paso 5: _ R V R V", "Paso 6: R _ V R V", "Paso 7: R R V _ V", "Paso 8: R R _ V V"],
+            3: ["Inicio: V V V _ R R R", "Paso 1: V V _ V R R R", "Paso 2: V V R V _ R R", "Paso 3: V V R V R _ R", "Paso 4: V V R _ R V R", "Paso 5: V _ R V R V R", "Paso 6: _ V R V R V R", "Paso 7: R V _ V R V R", "Paso 8: R V R V _ V R", "Paso 9: R V R V R V _", "Paso 10: R V R V R _ V", "Paso 11: R V R _ R V V", "Paso 12: R _ R V R V V", "Paso 13: R R _ V R V V", "Paso 14: R R R V _ V V", "Paso 15: R R R _ V V V"]
+        };
+
         // Función para registrar errores
         async function logError(errorType, errorDetails) {
             try {
-                await set(ref(database, 'errores/' + Date.now()), {
+                await set(ref(database, `errores/${currentPlayer || 'anonimo'}/${Date.now()}`), {
+                    jugador: currentPlayer || 'anonimo',
                     tipo: errorType,
                     detalles: errorDetails,
                     nivel: currentLevel,
@@ -86,7 +140,8 @@
         // Función para registrar eventos del juego
         async function logGameEvent(eventName, eventData) {
             try {
-                await set(ref(database, 'eventos/' + Date.now()), {
+                await set(ref(database, `eventos/${currentPlayer || 'anonimo'}/${Date.now()}`), {
+                    jugador: currentPlayer || 'anonimo',
                     evento: eventName,
                     datos: eventData,
                     timestamp: new Date().toISOString()
@@ -97,20 +152,17 @@
             }
         }
 
-        // Función para guardar los datos de la partida completada
+        // Función para guardar partidas completadas
         async function saveCompletedGame(level, moves, timeSpent) {
             try {
-                const gamesRef = ref(database, 'partidas_completadas');
-                const newGameRef = push(gamesRef);
-                
-                await set(newGameRef, {
+                await set(ref(database, `partidas_completadas/${currentPlayer || 'anonimo'}/${Date.now()}`), {
+                    jugador: currentPlayer || 'anonimo',
                     nivel: level,
                     movimientos: moves,
                     tiempo: timeSpent || 'N/A',
                     fecha: new Date().toISOString(),
                     userAgent: navigator.userAgent
                 });
-                
                 logEvent(analytics, 'partida_completada', {
                     level: level,
                     moves: moves
@@ -120,20 +172,6 @@
                 logError('save_game_error', e.message);
             }
         }
-
-        // Variables del juego
-        let moves = 0;
-        let frogs = [];
-        let currentLevel = 3;
-        let devMode = false;
-        let startTime = null;
-
-        // Soluciones precalculadas
-        const solutions = {
-            1: ["Inicio: V _ R", "Paso 1: _ V R", "Paso 2: R V _", "Paso 3: R _ V"],
-            2: ["Inicio: V V _ R R", "Paso 1: V _ V R R", "Paso 2: V R V _ R", "Paso 3: V R V R _", "Paso 4: V R _ R V", "Paso 5: _ R V R V", "Paso 6: R _ V R V", "Paso 7: R R V _ V", "Paso 8: R R _ V V"],
-            3: ["Inicio: V V V _ R R R", "Paso 1: V V _ V R R R", "Paso 2: V V R V _ R R", "Paso 3: V V R V R _ R", "Paso 4: V V R _ R V R", "Paso 5: V _ R V R V R", "Paso 6: _ V R V R V R", "Paso 7: R V _ V R V R", "Paso 8: R V R V _ V R", "Paso 9: R V R V R V _", "Paso 10: R V R V R _ V", "Paso 11: R V R _ R V V", "Paso 12: R _ R V R V V", "Paso 13: R R _ V R V V", "Paso 14: R R R V _ V V", "Paso 15: R R R _ V V V"]
-        };
 
         // Inicializar juego
         function initGame() {
@@ -148,7 +186,7 @@
                     ...Array(currentLevel).fill('red')
                 ];
                 
-                startTime = new Date(); // Registrar tiempo de inicio
+                startTime = new Date();
                 renderBoard();
                 logGameEvent('juego_iniciado', { level: currentLevel });
             } catch (error) {
@@ -179,7 +217,7 @@
             }
         }
 
-        // Mover rana
+        // Mover rana (¡ahora salta sobre ranas del mismo color!)
         function moveFrog(index) {
             try {
                 const frog = frogs[index];
@@ -189,22 +227,29 @@
                 const nextIndex = index + direction;
                 const jumpIndex = index + 2 * direction;
 
+                // Movimiento simple
                 if (frogs[nextIndex] === 'empty') {
                     [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
                     moves++;
-                    logGameEvent('movimiento_valido', {
-                        type: 'simple',
-                        from: index,
-                        to: nextIndex
-                    });
-                } else if (frogs[nextIndex] && frogs[nextIndex] !== frog && frogs[jumpIndex] === 'empty') {
+                    logGameEvent('movimiento_valido', { type: 'simple', from: index, to: nextIndex });
+                } 
+                // Salto sobre otra rana (mismo color o diferente)
+                else if (
+                    frogs[nextIndex] && 
+                    frogs[jumpIndex] === 'empty' && 
+                    (
+                        frogs[nextIndex] === frog ||   // Salto sobre rana del mismo color
+                        frogs[nextIndex] !== frog     // Salto sobre rana de color contrario
+                    )
+                ) {
                     [frogs[index], frogs[jumpIndex]] = [frogs[jumpIndex], frogs[index]];
                     moves++;
                     logGameEvent('movimiento_valido', {
                         type: 'salto',
                         from: index,
                         over: nextIndex,
-                        to: jumpIndex
+                        to: jumpIndex,
+                        color: frog
                     });
                 } else {
                     logError('movimiento_invalido', {
@@ -234,26 +279,17 @@
                 
                 if (JSON.stringify(frogs) === JSON.stringify(winState)) {
                     const endTime = new Date();
-                    const timeSpent = (endTime - startTime) / 1000; // Tiempo en segundos
+                    const timeSpent = (endTime - startTime) / 1000;
                     
-                    // Guardar datos de la partida completada
                     saveCompletedGame(currentLevel, moves, timeSpent);
-                    
-                    logGameEvent('nivel_completado', {
-                        level: currentLevel,
-                        moves: moves,
-                        timeSpent: timeSpent,
-                        timestamp: new Date().toISOString()
-                    });
-                    
-                    setTimeout(() => alert(`¡Ganaste en ${moves} movimientos! 🎉`), 100);
+                    setTimeout(() => alert(`¡${currentPlayer || 'Jugador'} ganó en ${moves} movimientos! 🎉`), 100);
                 }
             } catch (error) {
                 logError('win_check_error', error.message);
             }
         }
 
-        // Modo desarrollo
+        // Modo desarrollo (Ctrl+Shift+D)
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
                 devMode = !devMode;
@@ -276,6 +312,18 @@
         }
 
         // Event listeners
+        document.getElementById('start-game').addEventListener('click', () => {
+            const playerName = document.getElementById('player-name').value.trim();
+            if (!playerName) {
+                alert("¡Ingresa un nombre!");
+                return;
+            }
+            currentPlayer = playerName;
+            document.querySelector('.player-setup').classList.add('hidden');
+            document.getElementById('game-controls').classList.remove('hidden');
+            initGame();
+        });
+
         document.getElementById('reset').addEventListener('click', initGame);
         document.getElementById('level').addEventListener('change', initGame);
 
@@ -295,9 +343,6 @@
                 reason: event.reason
             });
         });
-
-        // Iniciar el juego
-        initGame();
     </script>
 </body>
 </html>
