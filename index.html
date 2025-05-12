@@ -43,7 +43,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+        import { getDatabase, ref, set, push } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
         import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
 
         // Configuración de Firebase
@@ -52,7 +52,7 @@
             authDomain: "salto-de-la-rana-ab7f9.firebaseapp.com",
             databaseURL: "https://salto-de-la-rana-ab7f9-default-rtdb.firebaseio.com",
             projectId: "salto-de-la-rana-ab7f9",
-            storageBucket: "salto-de-la-rana-ab7f9.firebasestorage.app",
+            storageBucket: "salto-de-la-rana-ab7f9.appspot.com",
             messagingSenderId: "891977313658",
             appId: "1:891977313658:web:5d0f2be7d60cf425e73ac3",
             measurementId: "G-Z56995RQ2J"
@@ -97,11 +97,36 @@
             }
         }
 
+        // Función para guardar los datos de la partida completada
+        async function saveCompletedGame(level, moves, timeSpent) {
+            try {
+                const gamesRef = ref(database, 'partidas_completadas');
+                const newGameRef = push(gamesRef);
+                
+                await set(newGameRef, {
+                    nivel: level,
+                    movimientos: moves,
+                    tiempo: timeSpent || 'N/A',
+                    fecha: new Date().toISOString(),
+                    userAgent: navigator.userAgent
+                });
+                
+                logEvent(analytics, 'partida_completada', {
+                    level: level,
+                    moves: moves
+                });
+            } catch (e) {
+                console.error("Error al guardar partida completada:", e);
+                logError('save_game_error', e.message);
+            }
+        }
+
         // Variables del juego
         let moves = 0;
         let frogs = [];
         let currentLevel = 3;
         let devMode = false;
+        let startTime = null;
 
         // Soluciones precalculadas
         const solutions = {
@@ -123,6 +148,7 @@
                     ...Array(currentLevel).fill('red')
                 ];
                 
+                startTime = new Date(); // Registrar tiempo de inicio
                 renderBoard();
                 logGameEvent('juego_iniciado', { level: currentLevel });
             } catch (error) {
@@ -207,9 +233,16 @@
                 ];
                 
                 if (JSON.stringify(frogs) === JSON.stringify(winState)) {
+                    const endTime = new Date();
+                    const timeSpent = (endTime - startTime) / 1000; // Tiempo en segundos
+                    
+                    // Guardar datos de la partida completada
+                    saveCompletedGame(currentLevel, moves, timeSpent);
+                    
                     logGameEvent('nivel_completado', {
                         level: currentLevel,
                         moves: moves,
+                        timeSpent: timeSpent,
                         timestamp: new Date().toISOString()
                     });
                     
