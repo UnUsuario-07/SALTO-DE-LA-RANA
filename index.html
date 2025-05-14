@@ -6,6 +6,7 @@
     <title>Salto de la Rana</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Fredoka+One&display=swap" rel="stylesheet">
     <style>
+        /* Estilos anteriores se mantienen igual */
         :root {
             --verde: #2ecc71;
             --rojo: #e74c3c;
@@ -232,18 +233,76 @@
         let currentLevel = 3;
         let currentPlayer = null;
         let startTime = null;
+        let gameId = null;
 
-        // Función para registrar eventos
+        // Función para generar un ID único para la partida
+        function generateGameId() {
+            return 'game_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        }
+
+        // Función para registrar eventos en Firebase con estructura organizada
         async function logEventToFirebase(eventType, eventData) {
             try {
-                await push(ref(database, `eventos/${currentPlayer || 'anonimo'}`), {
-                    ...eventData,
-                    tipo: eventType,
-                    timestamp: new Date().toISOString(),
-                    nivel: currentLevel,
-                    jugador: currentPlayer || 'anonimo'
+                const timestamp = new Date().toISOString();
+                const playerKey = currentPlayer ? currentPlayer.replace(/[.$#[\]/]/g, '_') : 'anonimo';
+                
+                // Creamos una referencia base para el jugador
+                const playerRef = ref(database, `jugadores/${playerKey}`);
+                
+                // Guardamos información básica del jugador si es nuevo
+                await set(playerRef, {
+                    nombre: currentPlayer || 'anonimo',
+                    ultimaPartida: timestamp
                 });
+                
+                // Si es una nueva partida, generamos un ID único
+                if (eventType === 'juego_iniciado') {
+                    gameId = generateGameId();
+                }
+                
+                // Creamos la estructura de datos organizada
+                let eventRef;
+                switch(eventType) {
+                    case 'juego_iniciado':
+                        eventRef = ref(database, `partidas/${gameId}`);
+                        await set(eventRef, {
+                            jugador: currentPlayer || 'anonimo',
+                            nivel: currentLevel,
+                            inicio: timestamp,
+                            estado: 'en_progreso'
+                        });
+                        break;
+                        
+                    case 'partida_completada':
+                        eventRef = ref(database, `partidas/${gameId}`);
+                        await set(eventRef, {
+                            fin: timestamp,
+                            estado: 'completada',
+                            movimientos: eventData.movimientos,
+                            tiempoSegundos: eventData.tiempoSegundos
+                        }, { merge: true });
+                        break;
+                        
+                    case 'movimiento':
+                        eventRef = ref(database, `partidas/${gameId}/movimientos/${moves}`);
+                        await set(eventRef, {
+                            ...eventData,
+                            timestamp: timestamp
+                        });
+                        break;
+                        
+                    case 'movimiento_invalido':
+                        eventRef = ref(database, `partidas/${gameId}/errores`);
+                        await push(eventRef, {
+                            ...eventData,
+                            timestamp: timestamp
+                        });
+                        break;
+                }
+                
+                // También registramos el evento en Analytics
                 logEvent(analytics, eventType, eventData);
+                
             } catch (e) {
                 console.error("Error al registrar evento:", e);
             }
@@ -307,7 +366,7 @@
                     color: frog
                 });
             } 
-            // Movimiento simple hacia atrás (nuevo)
+            // Movimiento simple hacia atrás
             else if (frogs[prevIndex] === 'empty') {
                 [frogs[index], frogs[prevIndex]] = [frogs[prevIndex], frogs[index]];
                 moves++;
@@ -338,7 +397,7 @@
                     sobreColor: frogs[nextIndex]
                 });
             }
-            // Salto hacia atrás sobre otra rana (mismo color o diferente) - nuevo
+            // Salto hacia atrás sobre otra rana (mismo color o diferente)
             else if (
                 frogs[prevIndex] && 
                 frogs[backJumpIndex] === 'empty' && 
