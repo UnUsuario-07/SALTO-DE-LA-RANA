@@ -6,7 +6,6 @@
     <title>Salto de la Rana</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Fredoka+One&display=swap" rel="stylesheet">
     <style>
-        /* Estilos anteriores se mantienen igual */
         :root {
             --verde: #2ecc71;
             --rojo: #e74c3c;
@@ -207,7 +206,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-        import { getDatabase, ref, set, push } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
+        import { getDatabase, ref, set, push, update } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js";
         import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-analytics.js";
 
         // Configuración de Firebase
@@ -249,52 +248,98 @@
                 // Creamos una referencia base para el jugador
                 const playerRef = ref(database, `jugadores/${playerKey}`);
                 
-                // Guardamos información básica del jugador si es nuevo
-                await set(playerRef, {
-                    nombre: currentPlayer || 'anonimo',
-                    ultimaPartida: timestamp
-                });
-                
                 // Si es una nueva partida, generamos un ID único
                 if (eventType === 'juego_iniciado') {
                     gameId = generateGameId();
+                    
+                    // Actualizamos la información del jugador
+                    await update(playerRef, {
+                        nombre: currentPlayer || 'anonimo',
+                        ultimaPartida: timestamp,
+                        ultimoNivel: currentLevel,
+                        estado: 'jugando'
+                    });
+                    
+                    // Creamos la referencia para la partida actual
+                    const gameRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}`);
+                    
+                    await set(gameRef, {
+                        id: gameId,
+                        jugador: currentPlayer || 'anonimo',
+                        nivel: currentLevel,
+                        inicio: timestamp,
+                        estado: 'en_progreso',
+                        movimientos: 0,
+                        configuracion: {
+                            ranasVerdes: currentLevel,
+                            ranasRojas: currentLevel,
+                            espacios: 1
+                        }
+                    });
                 }
                 
-                // Creamos la estructura de datos organizada
-                let eventRef;
+                // Manejo de diferentes tipos de eventos
                 switch(eventType) {
                     case 'juego_iniciado':
-                        eventRef = ref(database, `partidas/${gameId}`);
-                        await set(eventRef, {
-                            jugador: currentPlayer || 'anonimo',
-                            nivel: currentLevel,
-                            inicio: timestamp,
-                            estado: 'en_progreso'
-                        });
+                        // Ya manejado arriba
                         break;
                         
                     case 'partida_completada':
-                        eventRef = ref(database, `partidas/${gameId}`);
-                        await set(eventRef, {
+                        const gameRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}`);
+                        await update(gameRef, {
                             fin: timestamp,
                             estado: 'completada',
                             movimientos: eventData.movimientos,
-                            tiempoSegundos: eventData.tiempoSegundos
-                        }, { merge: true });
+                            tiempoSegundos: eventData.tiempoSegundos,
+                            eficiencia: (currentLevel * 2 + 1) / eventData.movimientos
+                        });
+                        
+                        // Actualizamos estadísticas del jugador
+                        const statsRef = ref(database, `jugadores/${playerKey}/estadisticas`);
+                        await update(statsRef, {
+                            ultimaPartidaCompletada: timestamp,
+                            totalPartidas: push().key, // Incrementa contador
+                            totalMovimientos: eventData.movimientos,
+                            [`mejorNivel${currentLevel}`]: {
+                                movimientos: eventData.movimientos,
+                                tiempo: eventData.tiempoSegundos
+                            },
+                            estado: 'inactivo'
+                        });
                         break;
                         
                     case 'movimiento':
-                        eventRef = ref(database, `partidas/${gameId}/movimientos/${moves}`);
-                        await set(eventRef, {
+                        const moveRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/movimientos/${moves}`);
+                        await set(moveRef, {
                             ...eventData,
-                            timestamp: timestamp
+                            numeroMovimiento: moves,
+                            timestamp: timestamp,
+                            estadoTablero: [...frogs], // Guardamos el estado actual del tablero
+                            tiempoTranscurrido: (new Date() - startTime) / 1000
+                        });
+                        
+                        // Actualizamos el contador de movimientos en la partida
+                        const gameUpdateRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}`);
+                        await update(gameUpdateRef, {
+                            movimientos: moves
                         });
                         break;
                         
                     case 'movimiento_invalido':
-                        eventRef = ref(database, `partidas/${gameId}/errores`);
-                        await push(eventRef, {
+                        const errorRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/errores`);
+                        await push(errorRef, {
                             ...eventData,
+                            timestamp: timestamp,
+                            estadoTablero: [...frogs],
+                            tiempoTranscurrido: (new Date() - startTime) / 1000
+                        });
+                        break;
+                        
+                    case 'nivel_cambiado':
+                        const levelRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/cambiosNivel`);
+                        await push(levelRef, {
+                            nivelAnterior: eventData.oldLevel,
+                            nivelNuevo: currentLevel,
                             timestamp: timestamp
                         });
                         break;
@@ -310,6 +355,7 @@
 
         // Inicializar juego
         function initGame() {
+            const oldLevel = currentLevel;
             currentLevel = parseInt(document.getElementById('level').value);
             moves = 0;
             document.getElementById('moves').textContent = `Movimientos: ${moves}`;
@@ -322,6 +368,10 @@
             
             startTime = new Date();
             renderBoard();
+            
+            if (oldLevel !== currentLevel) {
+                logEventToFirebase('nivel_cambiado', { oldLevel });
+            }
             logEventToFirebase('juego_iniciado', { movimientos: moves });
         }
 
