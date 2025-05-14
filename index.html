@@ -285,16 +285,18 @@
             });
         }
 
-        // Mover rana (con saltos sobre mismo color)
+        // Mover rana (con saltos sobre mismo color o diferente)
         function moveFrog(index) {
             const frog = frogs[index];
             if (frog === 'empty') return;
 
             const direction = frog === 'green' ? 1 : -1;
             const nextIndex = index + direction;
+            const prevIndex = index - direction;
             const jumpIndex = index + 2 * direction;
+            const backJumpIndex = index - 2 * direction;
 
-            // Movimiento simple
+            // Movimiento simple hacia adelante
             if (frogs[nextIndex] === 'empty') {
                 [frogs[index], frogs[nextIndex]] = [frogs[nextIndex], frogs[index]];
                 moves++;
@@ -305,7 +307,18 @@
                     color: frog
                 });
             } 
-            // Salto sobre otra rana (mismo color o diferente)
+            // Movimiento simple hacia atrás (nuevo)
+            else if (frogs[prevIndex] === 'empty') {
+                [frogs[index], frogs[prevIndex]] = [frogs[prevIndex], frogs[index]];
+                moves++;
+                logEventToFirebase('movimiento', {
+                    tipo: 'simple-reverso',
+                    desde: index,
+                    hacia: prevIndex,
+                    color: frog
+                });
+            }
+            // Salto hacia adelante sobre otra rana (mismo color o diferente)
             else if (
                 frogs[nextIndex] && 
                 frogs[jumpIndex] === 'empty' && 
@@ -323,6 +336,26 @@
                     hacia: jumpIndex,
                     color: frog,
                     sobreColor: frogs[nextIndex]
+                });
+            }
+            // Salto hacia atrás sobre otra rana (mismo color o diferente) - nuevo
+            else if (
+                frogs[prevIndex] && 
+                frogs[backJumpIndex] === 'empty' && 
+                (
+                    frogs[prevIndex] === frog ||   // Mismo color
+                    frogs[prevIndex] !== frog     // Color diferente
+                )
+            ) {
+                [frogs[index], frogs[backJumpIndex]] = [frogs[backJumpIndex], frogs[index]];
+                moves++;
+                logEventToFirebase('movimiento', {
+                    tipo: 'salto-reverso',
+                    desde: index,
+                    sobre: prevIndex,
+                    hacia: backJumpIndex,
+                    color: frog,
+                    sobreColor: frogs[prevIndex]
                 });
             } else {
                 logEventToFirebase('movimiento_invalido', {
