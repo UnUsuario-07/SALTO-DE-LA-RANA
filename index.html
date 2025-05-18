@@ -239,6 +239,47 @@
             return 'game_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
         }
 
+        // Función para obtener una descripción del estado del tablero
+        function getBoardStateDescription() {
+            return frogs.map((frog, index) => {
+                if (frog === 'green') return `Rana verde en posición ${index}`;
+                if (frog === 'red') return `Rana roja en posición ${index}`;
+                return `Espacio vacío en posición ${index}`;
+            }).join(', ');
+        }
+
+        // Función para determinar la razón de un movimiento inválido
+        function getInvalidMoveReason(fromIndex, toIndex) {
+            const frog = frogs[fromIndex];
+            if (!frog || frog === 'empty') return "No hay ficha en la posición seleccionada";
+            
+            const direction = frog === 'green' ? 1 : -1;
+            const attemptedDirection = toIndex > fromIndex ? 1 : -1;
+            
+            // Verificar si la dirección es incorrecta para el tipo de ficha
+            if ((frog === 'green' && attemptedDirection === -1) || 
+                (frog === 'red' && attemptedDirection === 1)) {
+                return "Dirección incorrecta para el tipo de ficha";
+            }
+            
+            // Verificar si el movimiento es demasiado largo
+            if (Math.abs(toIndex - fromIndex) > 2) {
+                return "Movimiento demasiado largo (máximo 2 espacios)";
+            }
+            
+            // Verificar si el destino está ocupado
+            if (frogs[toIndex] !== 'empty') {
+                return "Posición destino ocupada";
+            }
+            
+            // Verificar si es un salto sin ficha intermedia
+            if (Math.abs(toIndex - fromIndex) === 2 && frogs[(fromIndex + toIndex)/2] === 'empty') {
+                return "Salto inválido: no hay ficha intermedia para saltar";
+            }
+            
+            return "Movimiento inválido por razón desconocida";
+        }
+
         // Función para registrar eventos en Firebase con estructura organizada
         async function logEventToFirebase(eventType, eventData) {
             try {
@@ -309,29 +350,54 @@
                         break;
                         
                     case 'movimiento':
-                        const moveRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/movimientos/${moves}`);
-                        await set(moveRef, {
-                            ...eventData,
-                            numeroMovimiento: moves,
+                        // Creamos referencia para el paso actual
+                        const stepRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/pasos/paso_${moves}`);
+                        
+                        // Guardamos información detallada del movimiento
+                        await set(stepRef, {
+                            numero: moves,
+                            tipo: eventData.tipo,
+                            ficha: {
+                                color: eventData.color,
+                                posicionInicial: eventData.desde,
+                                posicionFinal: eventData.hacia || eventData.jumpIndex
+                            },
+                            sobre: eventData.sobre ? {
+                                posicion: eventData.sobre,
+                                color: eventData.sobreColor
+                            } : null,
                             timestamp: timestamp,
-                            estadoTablero: [...frogs], // Guardamos el estado actual del tablero
-                            tiempoTranscurrido: (new Date() - startTime) / 1000
+                            tablero: getBoardStateDescription(),
+                            estadoTablero: [...frogs],
+                            tiempoTranscurridoSegundos: ((new Date() - startTime) / 1000).toFixed(2)
                         });
                         
                         // Actualizamos el contador de movimientos en la partida
                         const gameUpdateRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}`);
                         await update(gameUpdateRef, {
-                            movimientos: moves
+                            movimientos: moves,
+                            ultimoMovimiento: timestamp
                         });
                         break;
                         
                     case 'movimiento_invalido':
-                        const errorRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/errores`);
-                        await push(errorRef, {
-                            ...eventData,
+                        // Creamos referencia para el error
+                        const errorRef = ref(database, `jugadores/${playerKey}/partidas/${gameId}/errores/error_${Date.now()}`);
+                        
+                        // Guardamos información detallada del error
+                        await set(errorRef, {
+                            tipo: 'movimiento_no_permitido',
+                            intento: {
+                                desde: eventData.intentoDesde,
+                                hacia: eventData.intentoHacia,
+                                ficha: frogs[eventData.intentoDesde] || 'desconocido'
+                            },
+                            motivo: getInvalidMoveReason(eventData.intentoDesde, eventData.intentoHacia),
                             timestamp: timestamp,
+                            tablero: getBoardStateDescription(),
                             estadoTablero: [...frogs],
-                            tiempoTranscurrido: (new Date() - startTime) / 1000
+                            tiempoTranscurridoSegundos: ((new Date() - startTime) / 1000).toFixed(2),
+                            movimientoActual: moves
                         });
                         break;
                         
