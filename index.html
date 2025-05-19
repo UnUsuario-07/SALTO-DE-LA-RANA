@@ -150,7 +150,14 @@
             transition: all 0.3s;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
         }
-
+        
+.frog, .empty {
+    flex: 0 0 auto; /* evita que cambien de tamaño por el espacio */
+    aspect-ratio: 1 / 1; /* mantiene forma circular siempre */
+    width: 75px; /* o usa max-width si deseas que se adapten */
+    height: auto; /* controlado por aspect-ratio */
+    border-radius: 50%;
+}
         .frog.green {
             background: linear-gradient(45deg, var(--verde), #27ae60);
             color: white;
