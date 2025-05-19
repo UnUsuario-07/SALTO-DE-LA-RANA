@@ -234,9 +234,12 @@
         let startTime = null;
         let gameId = null;
 
-        // Función para generar un ID único para la partida
+        // Función para generar un nombre descriptivo para la partida
         function generateGameId() {
-            return 'game_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            const level = parseInt(document.getElementById('level').value);
+            const timestamp = new Date();
+            const partidaNumber = Math.floor(Math.random() * 1000); // Número aleatorio para identificar
+            return `partida ${partidaNumber} nivel ${level}`;
         }
 
         // Función para obtener una descripción del estado del tablero
