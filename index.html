@@ -129,32 +129,26 @@
         }
 
         .game-board {
-            display: flex;
-            justify-content: center;
-            flex-wrap: nowrap;
-            gap: 10px;
-            margin: 35px auto;
-            overflow-x: auto;
-            padding: 10px;
-        }
+    display: flex;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 15px;
+    margin: 35px auto;
+    overflow-x: auto; /* Agrega esto por si hay muchas ranas */
+}
 
-        .frog, .empty {
-            min-width: 50px;
-            min-height: 50px;
-            width: calc(80vw / (var(--total-fichas) * 1.5));
-            height: calc(80vw / (var(--total-fichas) * 1.5));
-            max-width: 75px;
-            max-height: 75px;
+        .frog {
+            width: 75px;
+            height: 75px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             cursor: pointer;
-            font-size: calc(1.5vw + 10px);
+            font-size: 26px;
             transition: all 0.3s;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-            flex-shrink: 0;
         }
 
         .frog.green {
@@ -168,8 +162,11 @@
         }
 
         .empty {
+            width: 75px;
+            height: 75px;
             background: rgba(255, 255, 255, 0.08);
             border: 3px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
         }
 
         .hidden {
@@ -457,9 +454,6 @@
         function renderBoard() {
             const board = document.getElementById('board');
             board.innerHTML = '';
-            
-            // Establecemos la variable CSS con el número total de fichas
-            board.style.setProperty('--total-fichas', frogs.length);
             
             frogs.forEach((frog, index) => {
                 const div = document.createElement('div');
